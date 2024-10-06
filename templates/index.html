@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <title>Asteroids Close to Earth</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+            background-color: #181818; /* Dark background for overall look */
+            color: white; /* White text for contrast */
+        }
+        .label-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+        .burger-menu {
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1010;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -300px; /* Hidden by default on the right side */
+            width: 250px;
+            height: 100%;
+            background: rgba(50, 50, 50, 0.9);
+            color: white;
+            transition: right 0.3s ease; /* Change transition to right */
+            z-index: 1000;
+            padding: 20px;
+        }
+        .sidebar.active {
+            right: 0; /* Show sidebar */
+        }
+        .dark-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none; /* Hidden by default */
+            z-index: 999;
+        }
+        .asteroid-listing {
+            background: url('https://www.transparenttextures.com/patterns/dark-purple-sand.png'); /* Space background */
+            color: white;
+            padding: 100px 20px 20px; /* Added top padding for the fixed label bar */
+        }
+        .asteroid-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .asteroid-list li {
+            background: rgba(0, 0, 0, 0.8);
+            margin: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            flex: 1 0 calc(23% - 20px); /* Adjust width for 4 items */
+            transition: transform 0.3s;
+            cursor: pointer;
+            text-align: center; /* Center text in cards */
+        }
+        .asteroid-list li:hover {
+            transform: scale(1.05);
+        }
+        .close-approach-dates {
+            margin-top: 20px;
+            display: none; /* Hidden by default */
+        }
+        /* Loading Spinner */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1100;
+            visibility: hidden; /* Hidden by default */
+        }
+        .spinner {
+            border: 8px solid #f3f3f3; /* Light gray */
+            border-top: 8px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Responsive styles */
+        @media (max-width: 600px) {
+            .asteroid-list li {
+                flex: 1 0 calc(48% - 20px); /* 2 items per row */
+            }
+        }
+        @media (max-width: 400px) {
+            .asteroid-list li {
+                flex: 1 0 calc(100% - 20px); /* 1 item per row */
+            }
+        }
+
+        .bg {
+            background-image: url('http://127.0.0.1:5500/templates/images/test.jpg');
+            background-size: cover;
+        }
+    </style>
+</head>
+<body>
+    <div class="label-bar">
+        <h1>Asteroids Close to Earth Today</h1>
+        <div class="burger-menu" id="burgerMenu">
+            <i class="fas fa-bars"></i>
+        </div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <h2>Menu</h2>
+        <ul>
+            <li>Page 1</li>
+            <li>Page 2</li>
+            <li>Page 3</li>
+            <li>Page 4</li>
+        </ul>
+    </div>
+
+    <div class="dark-overlay" id="darkOverlay"></div>
+
+    <div class="asteroid-listing">
+        <ul class="asteroid-list">
+            {% for asteroid in asteroids %}
+            <li data-id="{{ asteroid.id }}">
+                <div class="bg">
+                    <h3>{{ asteroid.name }}</h3>
+                    <small>Estimated Diameter: {{ asteroid.diameter_min | default(0) | round(2) }} - {{ asteroid.diameter_max | default(0) | round(2) }} meters</small>
+                    <br>
+                    Hazardous: {{ 'Yes' if asteroid.is_hazardous else 'No' }}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="close-approach-dates" id="closeApproach">
+            <h2>Close Approach Dates</h2>
+            <ul id="datesList"></ul>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            // Toggle sidebar and overlay
+            $('#burgerMenu').on('click', function() {
+                $('#sidebar').toggleClass('active');
+                $('#darkOverlay').toggle();
+            });
+
+            // Close sidebar when dark overlay is clicked
+            $('#darkOverlay').on('click', function() {
+                $('#sidebar').removeClass('active');
+                $(this).hide();
+            });
+
+            $('.asteroid-list li').on('click', function() {
+                let asteroidId = $(this).data('id');
+
+                // Show the loading spinner
+                $('#loading').css('visibility', 'visible');
+
+                // Request to get asteroid's close approach dates
+                $.getJSON(`/asteroid/${asteroidId}`, function(data) {
+                    $('#loading').css('visibility', 'hidden');
+                    $('#datesList').empty(); // Clear previous dates
+                    data.close_approach_dates.forEach(function(date) {
+                        $('#datesList').append(`<li>${date}</li>`);
+                    });
+                    $('#closeApproach').show(); // Show close approach dates section
+                    $('html, body').animate({
+                        scrollTop: $("#closeApproach").offset().top
+                    }, 500); // Smooth scroll to the section
+                }).fail(function() {
+                    $('#loading').css('visibility', 'hidden');
+                    alert('Error fetching data. Please try again.');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
