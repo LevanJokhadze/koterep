@@ -5,13 +5,14 @@ import json
 import requests
 from datetime import datetime
 from fake_useragent import UserAgent
-
+import os
 app = Flask(__name__)
 
 # Initialize user agent object
 ua = UserAgent()
 
 # API Key
+API_KEY = 'QMUV7eP7KoBV9bKGJnbL7QW4lHIM4ySkFjYCjwvX'
 
 @app.route('/')
 def index():
@@ -65,5 +66,6 @@ def asteroid(asteroid_id):
     })
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
