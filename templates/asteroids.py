@@ -12,7 +12,6 @@ app = Flask(__name__)
 ua = UserAgent()
 
 # API Key
-API_KEY = 'QMUV7eP7KoBV9bKGJnbL7QW4lHIM4ySkFjYCjwvX'
 
 @app.route('/')
 def index():
